@@ -1,0 +1,330 @@
+#pragma once
+
+#ifndef INCLUDE_SEGFAULT_INTEGRAL
+#define INCLUDE_SEGFAULT_INTEGRAL
+
+#include <vector>
+#include <cmath>
+#include "linear"
+
+namespace integral {
+
+double lRect( double (*func)(double),
+              const double& start,
+				  	  const double& stop,
+						  const double& terms=4096 ){
+  double temp;
+	double dx = (stop - start) / terms;
+
+	std::vector<double> list = linspace(start, stop, terms);
+	for (int i = 0; i < (terms - 1); ++i) {
+		temp += func(list[i]) * dx;
+	}
+
+	return temp;
+}
+
+double rRect(double (*func)(double),
+                const double& start,
+                const double& stop,
+                const double& terms=4096){
+  double temp;
+  double dx = (stop - start) / terms;
+
+  std::vector<double> list = linspace(start, stop, terms);
+  for (int i = 1; i < terms; ++i) {
+    temp += func(list[i]) * dx;
+  }
+
+  return temp;
+}
+
+double mRect(double (*func)(double),
+                const double& start,
+                const double& stop,
+                const double& terms=4096){
+  double temp;
+  double dx = (stop - start) / terms;
+
+  std::vector<double> list = linspace((start + (dx / 2)),
+	                                    (stop - (dx / 2)),
+																			(terms - 1));
+  for (int i = 0; i < terms - 1; ++i) {
+    temp += func(list[i]) * dx;
+  }
+
+  return temp;
+}
+
+double trapInt(double (*func)(double),
+                const double& start,
+                const double& stop,
+                const double& terms=4096){
+  double temp;
+  double dx = (stop - start) / terms;
+
+  std::vector<double> list = linspace(start,
+                                      stop,
+                                      terms);
+  for (int i = 0; i < terms - 1; ++i) {
+    temp += (func(list[i]) + func(list[i + 1])) * dx / 2;
+  }
+
+  return temp;
+}
+
+double simpsonInt(double (*func)(double),
+                  const double& start,
+                  const double& stop,
+                  const double& terms=4096){
+  double temp;
+  double dx = (stop - start) / terms;
+
+  std::vector<double> list = linspace(start, stop, terms);
+
+  for (int i = 1; i < terms/2; ++i) {
+	  temp += (func(list[(2*i) - 2]) + (4 * func(list[(2*i) - 1])) + func(list[2*i]));
+  }
+	temp *= (dx /= 3);
+
+  return temp;
+}
+
+#ifdef INCLUDE_POLYNOMIAL
+
+double lRect(polynomial x,
+             const double& start,
+						 const double& stop,
+						 const double& terms=4096){
+  double temp;
+  double dx = (stop - start) / terms;
+
+  std::vector<double> list = linspace(start, stop, terms);
+  for (int i = 0; i < (terms - 1); ++i) {
+    temp += x.eval(list[i]);
+  }
+	temp *= dx;
+
+  return temp;
+}
+
+double rRect(polynomial x,
+                    const double& start,
+                    const double& stop,
+                    const double& terms=4096){
+  double temp;
+  double dx = (stop - start) / terms;
+
+  std::vector<double> list = linspace(start, stop, terms);
+  for (int i = 1; i < terms; ++i) {
+    temp += x.eval(list[i]);
+  }
+	temp *= dx;
+
+  return temp;
+}
+
+double mRect(polynomial x,
+                    const double& start,
+                    const double& stop,
+                    const double& terms=4096){
+  double temp;
+  double dx = (stop - start) / terms;
+
+	std::vector<double> list = linspace((start + (dx / 2)),
+                                      (stop - (dx / 2)),
+                                      (terms - 1));
+
+  for (int i = 0; i < (terms - 1); ++i) {
+    temp += x.eval(list[i]);
+  }
+	temp *= dx;
+
+  return temp;
+}
+
+double trapInt(polynomial x,
+                const double& start,
+                const double& stop,
+                const double& terms=4096){
+  double temp;
+  double dx = (stop - start) / terms;
+
+  std::vector<double> list = linspace(start,
+                                      stop,
+                                      terms);
+  for (int i = 0; i < terms - 1; ++i) {
+    temp += (x.eval(list[i]) + x.eval(list[i + 1]));
+  }
+	temp *= (dx/2);
+
+  return temp;
+}
+
+double simpsonInt(polynomial x,
+                  const double& start,
+                  const double& stop,
+                  const double& terms=4096){
+  double temp;
+  double dx = (stop - start) / terms;
+
+  std::vector<double> list = linspace(start, stop, terms);
+
+  for (int i = 1; i < terms/2; ++i) {
+    temp += (x.eval(list[(2*i) - 2]) + (4 * x.eval(list[(2*i) - 1])) + x.eval(list[2*i]));
+  }
+	temp *= (dx / 3);
+
+  return temp;
+}
+#endif
+
+
+};
+
+/* 
+==================================================================================================================
+==================================================================================================================
+== End of namespace integral =====================================================================================
+==================================================================================================================
+==================================================================================================================
+*/
+
+namespace diffeqn {
+
+// == Differential Equations ==============
+void euler(double& pos,
+           double& vel,
+           double& time,
+
+      /* Add possibility for custom functions
+       * of position and velocity. We require
+       * three inputs for the functions as they
+       * could be functions of all three variables.
+       * We just let the compiler optimize them out
+       * later.
+       * 
+       * dposf = (inf.) change in position function
+       * dvelf = (inf.) change in velocity function
+       */
+            double (*dposf)(const double&,
+                            const double&,
+                            const double&),
+
+            double (*dvelf)(const double&,
+                            const double&,
+                            const double&),
+
+      // Ability to change the small step size.
+           const double& dt=pow(10, -5))
+{
+  /* Take half of the small time step now to prevent
+   * multiple recalculations
+   */
+
+  time += 0.5 * dt;
+
+  // Then, we are actually using time + (dt/2) here
+  const double xMid = dposf(pos, vel, time);
+  const double vMid = dvelf(pos, vel, time);
+
+  pos += dt * dposf(xMid, vMid, time);
+  vel += dt * dvelf(xMid, vMid, time);
+
+  // Finally, set the time to be time + dt
+  time += 0.5 * dt;
+}
+
+
+void sEuler(double& pos,
+            double& vel,
+            double& time,
+
+            double (*dposf)(const double&,
+                            const double&,
+                            const double&),
+            double (*dvelf)(const double&,
+                            const double&,
+                            const double&),
+            const double& dt=pow(10, -5)) 
+{
+  const double tempX = pos;
+  const double tempV = vel;
+  vel += dt * dvelf(tempX, tempV, time);
+  pos += dt * dposf(tempX, tempV, time);
+  time += dt;
+}
+
+
+void rkm(double& pos,
+         double& vel,
+         double& time,
+
+         double (*dposf)(const double&,
+                         const double&,
+                         const double&),
+         double (*dvelf)(const double&,
+                         const double&,
+                         const double&),
+         const double& dt=pow(10, -5))
+{
+  /* First, create a temporary variable for
+   * the position and velocity to ensure that 
+   * we will calculate using the "current" values
+   * and not the "next" values which will be 
+   * stored in 'pos' and 'vel' respectively after
+   * the following calculations. Add 'const' on
+   * the declaration to ensure that they remain
+   * unchanged through the entire process.
+   */
+
+  const double tempX = pos;
+  const double tempV = vel;
+
+  // Calculate each term using x and v
+  const double xTerm_1 = dposf(tempX, tempV, time);
+  const double vTerm_1 = dvelf(tempX, tempV, time);
+
+  // Increment the time so that time = old time + 0.5 * dt
+  time += 0.5 * dt;
+  
+  const double xTerm_2 = dposf(   tempX + 0.5 * dt * xTerm_1,
+                                  tempV + 0.5 * dt * vTerm_1,
+                                  time  );
+  const double vTerm_2 = dvelf(   tempX + 0.5 * dt * xTerm_1,
+                                  tempV + 0.5 * dt * vTerm_1,
+                                  time  );
+
+  const double xTerm_3 = dposf(   tempX + 0.5 * dt * xTerm_2,
+                                  tempV + 0.5 * dt * vTerm_2,
+                                  time  );
+  const double vTerm_3 = dvelf(   tempX + 0.5 * dt * xTerm_2,
+                                  tempV + 0.5 * dt * vTerm_2,
+                                  time  );
+
+  // Increment the time so that time = old time + dt
+  time += 0.5 * dt;
+
+  const double xTerm_4 = dposf(   tempX + dt * xTerm_3,
+                                  tempV + dt * vTerm_3,
+                                  time  );
+  const double vTerm_4 = dvelf(   tempX + dt * xTerm_3,
+                                  tempV + dt * vTerm_3,
+                                  time  );
+  
+  // Add the changes to each term
+  pos += (dt / 6 * (  xTerm_1 + 2 * xTerm_2 +
+                      xTerm_4 + 2 * xTerm_3   ));
+  vel += (dt / 6 * (  vTerm_1 + 2 * vTerm_2 +
+                      vTerm_4 + 2 * vTerm_3   ));
+}
+};
+/* 
+==================================================================================================================
+==================================================================================================================
+== End of namespace diffeq =======================================================================================
+==================================================================================================================
+==================================================================================================================
+*/
+
+#endif

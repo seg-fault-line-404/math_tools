@@ -1,0 +1,22 @@
+#pragma once
+
+#ifndef INCLUDE_SEGFAULT_LINEAR
+#define INCLUDE_SEGFAULT_LINEAR
+
+#include <string>
+#include <vector>
+
+inline std::vector<double> linspace(const double& start, const double& stop, const int& terms){
+	std::vector<double> temp;
+	temp.resize(terms);
+	double step = (stop - start)/(terms - 1);
+	for (int i = 0; i < terms; i++) {
+		temp[i] = start + (i * step);
+	}
+
+	return temp;
+}
+
+template<typename _t> _t abs(_t x) { return x >= (_t)0 ? x : -x; }
+template<typename _t> std::string signof(_t x) { return x >= (_t)0 ? "+" : "-"; }
+#endif

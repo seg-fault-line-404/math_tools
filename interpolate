@@ -1,0 +1,123 @@
+#pragma once
+
+#define VAR_NAME(x) (#x)
+
+#include <iostream>
+#include <array>
+#include <vector>
+#include "polynomial.hpp"
+
+polynomial lagrangeInterpolate(const std::vector<double>& xlist, const std::vector<double>& ylist)
+ {
+	// ==== Check if there is enough input to match the output ==============
+	if (xlist.size() != ylist.size()) {
+
+		int min_size = min(static_cast<int>(xlist.size()), static_cast<int>(ylist.size()));
+		std::runtime_error x(std::string("Lists not the same size."));
+		std::cerr << x.what();
+
+		throw x;
+	}
+
+	polynomial res({ 0.0 });
+	std::vector<polynomial> terms;
+	int listSize = static_cast<int>(xlist.size());
+	terms.reserve(listSize);
+
+	for (int i = 0; i < listSize; i++) {
+		polynomial _T({ 1.0, -xlist[i] });
+		terms.push_back(_T);
+	}
+
+	for (int i = 0; i < terms.size(); i++) {
+		polynomial temp({ 1.0 });
+
+		for (int j = 0; j < listSize; j++) {
+			if (i != j) {
+				temp *= (terms[j] / (xlist[i] - xlist[j]));
+			}
+		}
+		res += (temp*ylist[i]);
+	}
+	return res;
+}
+
+template <typename _Ty>
+polynomial lagrangeInterpolate(std::vector<_Ty> xList, std::vector<_Ty> yList) {
+
+	// ==== Check if there is enough outputs to match the inputs before starting
+	if (xList.size() != yList.size()) {
+
+		int min_size = min(static_cast<int>(xList.size()), static_cast<int>(yList.size()));
+		std::runtime_error x(std::string("Lists not the same size."));
+		std::cerr << x.what();
+
+		throw x;
+	}
+
+	std::vector<double> xLfix, yLfix;
+	xLfix.resize(xList.size()); yLfix.resize(yList.size());
+
+	for (int i = 0; i < xList.size(); i++) {
+		xLfix[i] = static_cast<double>(xList[i]);
+		yLfix[i] = static_cast<double>(yList[i]);
+	}
+
+	return lagrangeInterpolate(xLfix, yLfix);
+}
+
+polynomial nevilleInterpolate(const std::vector<double>& xValues,	
+	const std::vector<double>& yValues,
+	const int& start,
+	const int& end,
+	const polynomial& x = polynomial({1.0, 0.0})) {
+	// It is very important that you start the process with default polynomial x
+
+	if (start == end) {
+		polynomial res({ yValues[end] });
+		return res;
+	}
+
+	double divisor = xValues[start] - xValues[end];
+	polynomial left = (x - xValues[end]) * nevilleInterpolate(xValues, yValues, start, end - 1, x);
+	polynomial right = (x - xValues[start]) * nevilleInterpolate(xValues, yValues, start + 1, end, x);
+
+	return (left - right) / divisor;
+
+}
+
+polynomial lagrangeInterpolate2(const std::vector<double>& xlist, const std::vector<double>& ylist,
+                                const int& start, const int& N)
+ {
+  // ==== Check if there is enough input to match the output ==============
+  if (xlist.size() != ylist.size()) {
+
+    int min_size = min(static_cast<int>(xlist.size()), static_cast<int>(ylist.size()));
+    std::runtime_error x(std::string("Lists not the same size."));
+    std::cerr << x.what();
+
+    throw x;
+  }
+
+  polynomial res({ 0.0 });
+  std::vector<polynomial> terms;
+  terms.reserve(N);
+
+  for (int i = start; i < start + N; i++) {
+    polynomial _T({ 1.0, -xlist[i] });
+    terms.push_back(_T);
+  }
+
+  for (int i = 0; i < N; i++) {
+    polynomial temp({ 1.0 });
+
+    for (int j = 0; j < N; j++) {
+      if (i != j) {
+        temp *= (terms[j] / (xlist[start + i] - xlist[start + j]));
+      }
+    }
+    res += (temp*ylist[start + i]);
+  }
+  return res;
+}
+

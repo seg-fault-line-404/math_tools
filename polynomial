@@ -1,0 +1,385 @@
+#pragma once
+
+#ifndef INCLUDE_SEGFAULT_POLYNOMIAL
+#define INCLUDE_SEGFAULT_POLYNOMIAL
+
+#include <iostream>
+#include <cstdint>
+#include "linear"
+#include "minmax.h"
+#include <cmath>
+#include <array>
+
+
+// Creates a polynomial description that the computer can work with
+struct polynomial {
+private:
+	std::string variable;
+	int degree;
+	std::vector<long double> components;
+
+public:
+
+	// ==== Constructor =======================================================================================
+
+	polynomial(const std::vector<long double>&initList = {0.0}, const std::string& var = "x") {
+		variable = var;
+		degree = static_cast<int>(initList.size()) - 1;
+		components = initList;
+	}
+
+	// ==== Evaluate the polynomial for any value of x ========================================================
+
+	template<typename _t> double eval(const _t& x) {
+		if (degree == 0) {
+			return components.back();
+		}
+
+		double result = 0.0;
+
+		for (int i = 0; i <= degree; i++) {
+			result += components[i] * pow(x, degree - i);
+		}
+
+		return result;
+	}
+	
+	
+	friend polynomial algdiff(polynomial& base){
+		
+		std::vector<long double> tcomp;
+		tcomp.resize(base.degree);
+		for (int i = 0; i < base.degree; i++){
+			tcomp[i] = base.components[i] * (base.degree - i); 
+		}
+		base.components = tcomp;
+		base.degree -= 1;
+
+		return base;
+	}
+
+	float diff_up(const double& x, const int& dx_pow=9) {
+		double dx, temp;
+		dx = pow(10, -dx_pow);
+		temp = eval(x + dx) - eval(x);
+
+		return (float)(temp/dx);
+	}
+
+	template<typename _t> float diff_up(const double& x, const _t& dx_pow) {
+		double dx, temp;
+		dx = pow(10, -dx_pow);
+		temp = eval(x + dx) - eval(x);
+
+		return (float)(temp/dx);
+	}
+
+
+	float diff(const double& x, const int& dx_pow=9) {
+		double dx, temp1, temp2, tempf;
+		
+		dx = pow(10, -dx_pow);
+		temp1 = eval(x - (2 * dx)) + (8 * eval(x + dx));
+		temp2 = (8 * eval(x - dx)) + eval(x + (2 * dx));
+		tempf = (temp1 - temp2) / (12 * dx);
+
+		return (float)tempf;
+	}
+
+	template<typename _t> float diff(const double& x, const _t& dx_pow) {
+		double dx, temp1, temp2, tempf;
+		
+		dx = pow(10, -dx_pow);
+		temp1 = eval(x - (2 * dx)) + (8 * eval(x + dx));
+		temp2 = (8 * eval(x - dx)) + eval(x + (2 * dx));
+		tempf = (temp1 - temp2) / (12 * dx);
+
+		return (float)tempf;
+	}
+
+	float diff2(const double& x, const int& dx_pow=5) {
+		double dx, temp;
+		dx = pow(10, -dx_pow);
+		temp = eval(x + dx) + eval(x - dx) - (2 * eval(x));
+		temp /= pow(dx, 2);
+
+		return (float)temp;
+	}
+	// ==== Polynomial - polynomial Operators =================================================================
+
+	friend polynomial operator+ (const polynomial& base, const polynomial& other) {
+		int maxDeg = max(base.degree, other.degree);
+
+		polynomial result;
+		result.degree = max(base.degree, other.degree);
+		result.components.resize(max(base.degree, other.degree) + 1);
+
+		for (int i = 0; i < result.components.size(); i++) {
+			int currDeg = result.degree - i;
+			double currentRes = 0.0;
+
+			if (base.degree >= currDeg) {
+				currentRes += base.components[base.degree - currDeg];
+			}
+
+			if (other.degree >= currDeg) {
+				currentRes += other.components[other.degree - currDeg];
+			}
+
+			result.components[i] = currentRes;
+		}
+
+		return result;
+	}
+
+
+	friend polynomial operator- (const polynomial& base, const polynomial& other) {
+		int maxDeg = max(base.degree, other.degree);
+
+		polynomial result;
+		result.degree = max(base.degree, other.degree);
+		result.components.resize(max(base.degree, other.degree) + 1);
+
+		for (int i = 0; i < result.components.size(); i++) {
+			int currDeg = result.degree - i;
+			double currentRes = 0.0;
+
+			if (base.degree >= currDeg) {
+				currentRes += base.components[base.degree - currDeg];
+			}
+
+			if (other.degree >= currDeg) {
+				currentRes -= other.components[other.degree - currDeg];
+			}
+
+			result.components[i] = currentRes;
+		}
+
+		return result;
+	}
+
+	friend polynomial operator* (const polynomial& base, const polynomial& other) {
+		polynomial result;
+		result.variable = base.variable;
+
+		result.degree = base.degree + other.degree;
+
+		result.components.resize(result.degree + 1);
+
+		for (int i = 0; i < base.degree + 1; i++) {
+			for (int j = 0; j < other.degree + 1; j++) {
+				result.components[i + j] += base.components[i] * other.components[j];
+			}
+		}
+
+		return result;
+	}
+
+	// ==== Polynomial $= Polynomial Operators ================================================================
+
+	void operator+= (const polynomial& other) {
+
+		int actDeg = max(degree, other.degree);
+
+		std::vector<long double> l;
+		l.resize(actDeg + 1);
+
+		for (uint32_t i = 0; i <= actDeg; i++) {
+			int currDeg = actDeg - i;
+			long double currentRes = 0.0;
+
+			if (degree >= currDeg) {
+				currentRes += components[degree - currDeg];
+			}
+
+			if (other.degree >= currDeg) {
+				currentRes += other.components[other.degree - currDeg];
+			}
+
+			l[i] = currentRes;
+		}
+
+		components = l;
+		degree = actDeg;
+	}
+
+	void operator-= (const polynomial& other) {
+
+		int actDeg = max(degree, other.degree);
+
+		std::vector<long double> l;
+		l.resize(actDeg + 1);
+
+		for (uint32_t i = 0; i <= actDeg; i++) {
+			int currDeg = actDeg - i;
+			long double currentRes = 0.0;
+
+			if (degree >= currDeg) {
+				currentRes += components[degree - currDeg];
+			}
+
+			if (other.degree >= currDeg) {
+				currentRes -= other.components[other.degree - currDeg];
+			}
+
+			l[i] = currentRes;
+		}
+
+		components = l;
+		degree = actDeg;
+	}
+
+	void operator *= (const polynomial& other) {
+		std::vector<long double> res;
+
+		int tDeg = degree + other.degree;
+
+		res.resize(tDeg + 1);
+
+		for (int i = 0; i < degree + 1; i++) {
+			for (int j = 0; j < other.degree + 1; j++) {
+				int ij = i + j;
+				res[ij] += components[i] * other.components[j];
+			}
+		}
+
+		degree = tDeg;
+		components = res;
+	}
+
+	friend bool operator==(const polynomial& lhs, const polynomial& rhs) {
+
+		if (lhs.degree != rhs.degree) {
+			return false;
+		}
+
+		for (int i = 0; i < lhs.components.size(); i++) {
+			if (lhs.components[i] != rhs.components[i]) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	// ==== Polynomial - scalar operators =====================================================================
+	
+	friend polynomial pow(const polynomial& base, const int& power) {
+		polynomial res({ 1.0 });
+
+		if (power == 0) {
+			return res;
+		}
+
+		for (int i = 1; i <= power; i++) {
+			res = res * base;
+		}
+
+		return res;
+	}
+
+	template<typename _Ty> friend polynomial operator+ (const polynomial& base, const _Ty& other) {
+		polynomial result;
+		result.degree = base. degree;
+		result.components = base.components;
+		result.variable = base.variable;
+		result.components.back() += other;
+
+		return result;
+	}
+
+	template<typename _Ty> friend polynomial operator+ (const _Ty& other, const polynomial& base) {
+		return base + other;
+	}
+
+	template<typename _Ty> friend polynomial operator- (const polynomial& base, const _Ty& other) {
+		polynomial result;
+		result.degree = base.degree;
+		result.components = base.components;
+		result.variable = base.variable;
+		result.components.back() -= other;
+
+		return result;
+	}
+	
+	template<typename _Ty> friend polynomial operator- (const _Ty& other, const polynomial& base) {
+		polynomial result = base - other;
+		result *= -1.0;
+		return result;
+	}
+
+	template<typename _Ty> friend polynomial operator* (const polynomial& base, const _Ty& other) {
+		polynomial result;
+		result.degree = base.degree;
+		result.components = base.components;
+		result.variable = base.variable;
+		for (int i = 0; i <= result.degree; i++) {
+			result.components[i] = result.components[i]*other;
+		}
+
+		return result;
+	}
+
+	template<typename _Ty> friend polynomial operator* (const _Ty& other, const polynomial& base) {
+		return base * other;
+	}
+
+	template<typename _Ty> friend polynomial operator/ (const polynomial& base, const _Ty& other) {
+		polynomial result;
+		result.degree = base.degree;
+		result.components = base.components;
+		result.variable = base.variable;
+		for (int i = 0; i <= result.degree; i++) {
+			result.components[i] = result.components[i] / other;
+		}
+
+		return result;
+	}
+
+	template<typename _Ty> friend polynomial operator/ (const _Ty& other, const polynomial& base) {
+		return base / other;
+	}
+
+	// ==== Polynomial $= Operators ===========================================================================
+
+	template<typename _Ty> void operator+= (const _Ty& other) {
+		components.back() += other;
+	}
+
+	template<typename _Ty> void operator-= (const _Ty& other) {
+		components.back() -= other;
+	}
+
+	template<typename _Ty> void operator*= (const _Ty& other) {
+		for (auto& component : components) {
+			component *= other;
+		}
+	}
+
+	template<typename _Ty> void operator/= (const _Ty& other) {
+		for (auto& component : components) {
+			component /= other;
+		}
+	}
+
+
+	// ==== Polynomial output to console ======================================================================
+
+	friend std::ostream& operator << (std::ostream& out, const polynomial& pol) {
+
+		if (pol.degree == 0) {
+			out << pol.components.back();
+			return out;
+		}
+		
+		for (int i = 0; i < pol.degree; i++) {
+			out << pol.components[i] << "(" << pol.variable << "^" << pol.degree - i << ") + ";
+		}
+
+		out << pol.components.back();
+
+		return out;
+	};
+};
+
+#endif

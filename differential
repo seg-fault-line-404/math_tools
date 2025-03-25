@@ -1,0 +1,99 @@
+#pragma once
+
+#ifndef INCLUDE_SEGFAULT_DIFFERENTIAL
+#define INCLUDE_SEGFAULT_DIFFERENTIAL
+
+#include <array>
+#include <math.h>
+#include <polynomial>
+
+double diff(double (*func)(double),
+            const double& x=0.,
+            const double& dx=pow(10, -5)) {
+  double temp;
+  temp = (func(x + dx) - func(x - dx)) / (2 * dx);
+  return temp;
+}
+
+namespace roots{
+
+double bisectRoot(double (*func)(double),
+                  const std::array<double, 2>& interval,
+                  const int& steps) {
+  double mid = (interval[0] + interval[1])/2;
+  if (steps == 0 || (*func)(mid) == 0) { return mid; }
+  double ff = (*func)(interval[0]) * (*func)(mid);
+  
+  if (ff > 0) { return bisectRoot((*func), {mid, interval[1]}, steps - 1); }
+  
+  return bisectRoot((*func), {interval[0], mid}, steps - 1);
+}
+
+double newtonRoot(double (*func)(double),
+                  const double& guess,
+                  const int& steps) {
+  if (steps < 1) { return guess; }
+  double newGuess;
+  newGuess = guess - ((*func)(guess) / diff((*func), (guess)));
+  
+  return newtonRoot((*func), newGuess, steps - 1);
+}
+
+double secantRoot(double (*func)(double),
+                  const std::array<double, 2>& guess,
+                  const int& steps) {
+  if (steps < 1 || guess[0] == guess[1]) { return guess[0]; }
+  double newGuess;
+  newGuess = -(*func)(guess[1]) * ( guess[1] - guess[0] );
+  newGuess /= ((*func)(guess[1]) - (*func)(guess[0]));
+  newGuess += guess[1];
+  
+  return secantRoot((*func), {guess[1], newGuess}, steps - 1);
+}
+
+#ifdef INCLUDE_SEGFAULT_POLYNOMIAL
+
+double bisectRoot(polynomial base,
+                  const std::array<double, 2>& interval,
+                  const int& steps) {
+  double mid = (interval[0] + interval[1])/2;
+  if (steps == 0 || base.eval(mid) == 0) { return mid; }
+  double ff = base.eval(interval[0]) * base.eval(mid);
+  
+  if (ff > 0) { return bisectRoot(base, {mid, interval[1]}, steps - 1); }
+  
+  return bisectRoot(base, {interval[0], mid}, steps - 1);
+}
+
+double newtonRoot(polynomial base,
+                  const double& guess,
+                  const int& steps) {
+  if (steps < 1) { return guess; }
+  double newGuess;
+  newGuess = guess - (base.eval(guess) / algdiff(base).eval(guess));
+  
+  return newtonRoot(base, newGuess, steps - 1);
+}
+
+double secantRoot(polynomial base,
+                  const std::array<double, 2>& guess,
+                  const int& steps) {
+  if (steps < 1 || guess[0] == guess[1]) { return guess[0]; }
+  double newGuess;
+  newGuess = -base.eval(guess[1]) * ( guess[1] - guess[0] );
+  newGuess /= (base.eval(guess[1]) - base.eval(guess[0]));
+  newGuess += guess[1];
+  
+  return secantRoot(base, {guess[1], newGuess}, steps - 1);
+}
+#endif
+};
+
+/* 
+==================================================================================================================
+==================================================================================================================
+== End of namespace roots ========================================================================================
+==================================================================================================================
+==================================================================================================================
+*/
+#endif
